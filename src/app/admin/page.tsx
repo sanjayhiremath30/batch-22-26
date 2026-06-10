@@ -8,7 +8,7 @@ import { Trash2, Plus, UploadCloud, CheckCircle, Lock, Unlock } from "lucide-rea
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminPage() {
-  const { students, init, addStudent, deleteStudent } = useStudentStore();
+  const { students, init, add, delete: deleteStudent } = useStudentStore();
   const { memories: tunnelMemories, init: initTunnel, addMemory, deleteMemory } = useMemoryTunnelStore();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"students" | "tunnel">("students");
@@ -55,7 +55,7 @@ export default function AdminPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleAddStudent = (e: React.FormEvent) => {
+  const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     const newStudent: Student = {
       id: Date.now().toString(),
@@ -69,7 +69,7 @@ export default function AdminPage() {
       editPassword: editPassword.trim(),
     };
 
-    addStudent(newStudent);
+    await add(newStudent);
 
     // Reset form
     setName("");
@@ -370,11 +370,17 @@ export default function AdminPage() {
                         title={student.messageToBatch ? "Profile filled" : "Awaiting self-fill"}
                       />
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Delete ${student.name} from the batch?`)) {
-                            deleteStudent(student.id);
-                          }
-                        }}
+                         onClick={async () => {
+                           if (window.confirm(`Delete ${student.name} from the batch?`)) {
+                             // Use the mapped string id for deletion
+                             const delId = student.id;
+                             if (!delId) {
+                               alert('Unable to delete: missing student ID');
+                               return;
+                             }
+                             await deleteStudent(delId);
+                           }
+                         }}
                         className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all font-medium border border-red-500/30 hover:border-red-500 shrink-0"
                       >
                         <Trash2 size={15} /> Delete

@@ -145,20 +145,20 @@ export default function GlobalBackground() {
     };
   }, [mounted, pathname]);
 
-  if (!mounted || pathname === "/") return null;
+  if (!mounted) return null;
 
   return (
     <>
       {/* Background Graduation Cap Image with gold/dark overlay for visual depth */}
       <div 
         className="fixed inset-0 z-[-30] bg-cover bg-center bg-no-repeat transition-all duration-1000"
-        style={{ 
-          backgroundImage: "url('/grad_bg.jpg')",
-          opacity: 0.4 // Increased from 0.12 so it is clearly visible
+        style={{
+          backgroundImage: "url('/hero_background.png')",
+          opacity: 0.6 // stronger opacity for clearer text visibility
         }}
       />
       {/* Gradient Dark Backdrop Overlay - adjusted so the background graphics are visible */}
-      <div className="fixed inset-0 z-[-25] bg-gradient-to-b from-black/40 via-black/60 to-black/85 pointer-events-none" />
+      <div className="fixed inset-0 z-[-25] bg-gradient-to-b from-black/60 via-black/80 to-black/95 pointer-events-none" />
 
       {/* Firecrackers Canvas overlay (subtle and gorgeous) */}
       <canvas

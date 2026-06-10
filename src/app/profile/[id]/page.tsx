@@ -10,7 +10,7 @@ import { Student } from "@/data/students";
 export default function ProfilePage() {
   const { id } = useParams();
   const router = useRouter();
-  const { students, init, updateStudent } = useStudentStore();
+  const { students, init, update } = useStudentStore();
   const [student, setStudent] = useState<Student | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -51,7 +51,7 @@ export default function ProfilePage() {
       bestFriend,
     };
 
-    updateStudent(updatedStudent);
+    update(updatedStudent);
     setStudent(updatedStudent);
     setIsEditing(false);
     setSaved(true);

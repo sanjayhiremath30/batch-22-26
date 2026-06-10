@@ -52,7 +52,7 @@ export default function Navigation() {
               </button>
 
               <h2 className="text-2xl font-bold neon-text-purple tracking-widest mt-12 mb-8">
-                DRIMAC 22-26
+                RYMEC
               </h2>
 
               <nav className="flex flex-col gap-4">
