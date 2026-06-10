@@ -4,31 +4,50 @@ import { getDb } from '@/lib/mongodb';
 import { verifySecretKey } from '@/lib/secretKeyAuth';
 import { ObjectId } from 'mongodb';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const secretKey = request.headers.get('x-secret-key');
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const secretKey = request.headers.get('x-secret-key') || undefined;
+
   try {
     await verifySecretKey(secretKey);
   } catch {
     return new NextResponse('Unauthorized', { status: 401 });
   }
+
   const updates = await request.json();
   const db = getDb();
-  const now = new Date();
+
   await db.collection('signatureWall').updateOne(
-    { _id: new ObjectId(params.id) },
-    { $set: { ...updates, updatedAt: now } }
+    { _id: new ObjectId(id) },
+    { $set: updates }
   );
+
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const secretKey = request.headers.get('x-secret-key');
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const secretKey = request.headers.get('x-secret-key') || undefined;
+
   try {
     await verifySecretKey(secretKey);
   } catch {
     return new NextResponse('Unauthorized', { status: 401 });
   }
+
   const db = getDb();
-  await db.collection('signatureWall').deleteOne({ _id: new ObjectId(params.id) });
+
+  await db.collection('signatureWall').deleteOne({
+    _id: new ObjectId(id),
+  });
+
   return NextResponse.json({ success: true });
 }

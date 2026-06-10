@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       // send initial comment to keep connection alive in some clients
       controller.enqueue(encoder.encode(': connected\n\n'));
       changeStream.on('change', (change) => {
-        const data = JSON.stringify(change.fullDocument);
+        const data = JSON.stringify((change as any).fullDocument || {});
         const payload = `data: ${data}\n\n`;
         controller.enqueue(encoder.encode(payload));
       });

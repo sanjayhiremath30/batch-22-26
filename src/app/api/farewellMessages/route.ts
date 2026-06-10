@@ -7,26 +7,41 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const skip = Number(url.searchParams.get('skip') ?? '0');
   const limit = Number(url.searchParams.get('limit') ?? '20');
+
   const db = getDb();
+
   const msgs = await db
     .collection('farewellMessages')
     .find({})
     .skip(skip)
     .limit(limit)
     .toArray();
+
   return NextResponse.json(msgs);
 }
 
 export async function POST(request: Request) {
-  const secretKey = request.headers.get('x-secret-key');
+  const secretKey = request.headers.get('x-secret-key') || undefined;
+
   try {
     await verifySecretKey(secretKey);
   } catch {
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse('Unauthorized', {
+      status: 401,
+    });
   }
+
   const body = await request.json();
   const now = new Date();
   const db = getDb();
-  const result = await db.collection('farewellMessages').insertOne({ ...body, createdAt: now, updatedAt: now });
-  return NextResponse.json({ insertedId: result.insertedId });
+
+  const result = await db.collection('farewellMessages').insertOne({
+    ...body,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return NextResponse.json({
+    insertedId: result.insertedId,
+  });
 }

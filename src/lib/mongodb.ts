@@ -33,7 +33,7 @@ export function getDb(): Db {
   return cachedDb;
 }
 
-export default async function handler(req, res) {
+export default async function handler(req: any, res: any) {
   try {
     await connectToDatabase();
     res.status(200).json({ message: 'MongoDB connection successful' });

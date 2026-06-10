@@ -51,7 +51,7 @@ export default function ProfilePage() {
       bestFriend,
     };
 
-    update(updatedStudent);
+    update(student.id as string, updatedStudent);
     setStudent(updatedStudent);
     setIsEditing(false);
     setSaved(true);

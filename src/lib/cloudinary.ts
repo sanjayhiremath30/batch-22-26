@@ -26,7 +26,7 @@ export async function uploadImage(fileBuffer: Buffer, publicId?: string): Promis
   return new Promise<string>((resolve, reject) => {
     const upload = cloudinary.uploader.upload_stream({ resource_type: 'image', public_id: publicId }, (error, result) => {
       if (error) return reject(error);
-      resolve(result?.secure_url ?? result?.url);
+      resolve(result?.secure_url ?? result?.url ?? '');
     });
     upload.end(fileBuffer);
   });
@@ -42,7 +42,7 @@ export async function uploadVideo(fileBuffer: Buffer, publicId?: string): Promis
   return new Promise<string>((resolve, reject) => {
     const upload = cloudinary.uploader.upload_stream({ resource_type: 'video', public_id: publicId }, (error, result) => {
       if (error) return reject(error);
-      resolve(result?.secure_url ?? result?.url);
+      resolve(result?.secure_url ?? result?.url ?? '');
     });
     upload.end(fileBuffer);
   });

@@ -11,7 +11,7 @@ export async function GET() {
 
 // POST a new entry (requires secret key)
 export async function POST(request: Request) {
-  const secretKey = request.headers.get('x-secret-key');
+  const secretKey = request.headers.get('x-secret-key') || undefined;
   try {
     await verifySecretKey(secretKey);
   } catch (e) {
