@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [branch, setBranch] = useState("");
   const [instagramId, setInstagramId] = useState("");
   const [editPassword, setEditPassword] = useState("");
+  const [submissionKey, setSubmissionKey] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string>("/college.jpg");
   const [successMsg, setSuccessMsg] = useState(false);
@@ -99,6 +100,7 @@ export default function AdminPage() {
       bestFriend: "",
       photoUrl: photoDataUrl,
       editPassword: editPassword.trim(),
+      submissionKey: submissionKey.trim(),
     };
 
     await add(newStudent);
@@ -108,6 +110,7 @@ export default function AdminPage() {
     setBranch("");
     setInstagramId("");
     setEditPassword("");
+    setSubmissionKey("");
     setPhotoPreview(null);
     setPhotoDataUrl("/college.jpg");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -338,6 +341,21 @@ export default function AdminPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
                   />
                 </div>
+              </div>
+
+              {/* Submission Key — for Signature Wall / Hall of Fame / Time Capsules */}
+              <div>
+                <label className="block text-zinc-400 text-sm mb-1">
+                  Submission Key *
+                  <span className="ml-2 text-xs text-purple-400">(student uses this to sign wall, nominate, &amp; post capsules)</span>
+                </label>
+                <input
+                  required
+                  value={submissionKey}
+                  onChange={e => setSubmissionKey(e.target.value)}
+                  placeholder="e.g. RaviCSE2026"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono"
+                />
               </div>
 
               <button

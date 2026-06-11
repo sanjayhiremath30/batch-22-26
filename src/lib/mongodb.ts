@@ -5,7 +5,7 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri: string = process.env.MONGODB_URI;
-let client: MongoClient;
+let client: MongoClient | null = null;
 let cachedDb: Db | null = null;
 
 export async function connectToDatabase(): Promise<Db> {
@@ -13,9 +13,7 @@ export async function connectToDatabase(): Promise<Db> {
     return cachedDb;
   }
   if (!client) {
-    client = new MongoClient(uri, {
-      // Optional: set options like useUnifiedTopology if needed
-    });
+    client = new MongoClient(uri);
   }
   await client.connect();
   // Use DB_NAME if provided, otherwise fall back to default DB from URI
@@ -26,11 +24,13 @@ export async function connectToDatabase(): Promise<Db> {
   return db;
 }
 
-export function getDb(): Db {
-  if (!cachedDb) {
-    throw new Error('Database not initialized. Call connectToDatabase first.');
-  }
-  return cachedDb;
+/**
+ * Returns the cached Db, auto-connecting if not yet initialized.
+ * Always await this function in API routes.
+ */
+export async function getDb(): Promise<Db> {
+  if (cachedDb) return cachedDb;
+  return connectToDatabase();
 }
 
 export default async function handler(req: any, res: any) {

@@ -125,18 +125,18 @@ export default function GrandEndingPage() {
                   className="object-contain bg-black/50"
                 />
               </motion.div>
-
-              {/* Credits below the image */}
+              {/* Copyright Credit */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 4, duration: 2 }}
                 className="mt-8 text-center"
               >
-                <p className="text-sm md:text-base text-zinc-500 font-medium tracking-widest uppercase">
-                  Website built by <span className="text-zinc-300 font-bold">SANJAY M</span>
+                <p className="text-sm md:text-base text-zinc-500 tracking-widest">
+                  © 2026 Sanjay M. All Rights Reserved.
                 </p>
               </motion.div>
+
             </motion.div>
           )}
         </AnimatePresence>

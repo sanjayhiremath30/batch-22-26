@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const skip = Number(url.searchParams.get('skip') ?? '0');
   const limit = Number(url.searchParams.get('limit') ?? '20');
 
-  const db = getDb();
+  const db = await getDb();
 
   const items = await db
     .collection('memoryTunnel')
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const now = new Date();
-  const db = getDb();
+  const db = await getDb();
 
   const result = await db.collection('memoryTunnel').insertOne({
     ...body,

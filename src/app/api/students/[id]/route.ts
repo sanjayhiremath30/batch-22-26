@@ -1,6 +1,6 @@
 // src/app/api/students/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { getDb, connectToDatabase } from '@/lib/mongodb';
+import { getDb } from '@/lib/mongodb';
 import { verifySecretKey } from '@/lib/secretKeyAuth';
 import { ObjectId } from 'mongodb';
 
@@ -14,39 +14,38 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-
   console.log('UPDATE ID:', id);
+
   const secretKey = request.headers.get('x-secret-key') || undefined;
-
-  await connectToDatabase();
-
   try {
     await verifySecretKey(secretKey);
   } catch {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const updates = await request.json();
-  const db = getDb();
-  const now = new Date();
+  try {
+    const updates = await request.json();
+    const db = await getDb();
+    const now = new Date();
 
-  let result;
+    let result;
+    if (isObjectId(id)) {
+      result = await db.collection('students').updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updates, updatedAt: now } }
+      );
+    } else {
+      result = await db.collection('students').updateOne(
+        { id },
+        { $set: { ...updates, updatedAt: now } }
+      );
+    }
 
-  if (isObjectId(id)) {
-    result = await db.collection('students').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { ...updates, updatedAt: now } }
-    );
-  } else {
-    result = await db.collection('students').updateOne(
-      { id },
-      { $set: { ...updates, updatedAt: now } }
-    );
+    return NextResponse.json({ success: result.modifiedCount > 0 });
+  } catch (err) {
+    console.error('[students PUT]', err);
+    return NextResponse.json({ error: 'Failed to update student' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    success: result.modifiedCount > 0,
-  });
 }
 
 /** Delete a student */
@@ -55,32 +54,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-
   console.log('DELETE ID:', id);
+
   const secretKey = request.headers.get('x-secret-key') || undefined;
-
-  await connectToDatabase();
-
   try {
     await verifySecretKey(secretKey);
   } catch {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  const db = getDb();
-  let result;
+  try {
+    const db = await getDb();
+    let result;
 
-  if (isObjectId(id)) {
-    result = await db.collection('students').deleteOne({
-      _id: new ObjectId(id),
-    });
-  } else {
-    result = await db.collection('students').deleteOne({
-      id,
-    });
+    if (isObjectId(id)) {
+      result = await db.collection('students').deleteOne({ _id: new ObjectId(id) });
+    } else {
+      result = await db.collection('students').deleteOne({ id });
+    }
+
+    return NextResponse.json({ success: result.deletedCount > 0 });
+  } catch (err) {
+    console.error('[students DELETE]', err);
+    return NextResponse.json({ error: 'Failed to delete student' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    success: result.deletedCount > 0,
-  });
 }

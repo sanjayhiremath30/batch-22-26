@@ -1,53 +1,25 @@
 // src/app/api/signatureWall/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
-import { verifySecretKey } from '@/lib/secretKeyAuth';
 import { ObjectId } from 'mongodb';
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-
-  const secretKey = request.headers.get('x-secret-key') || undefined;
-
-  try {
-    await verifySecretKey(secretKey);
-  } catch {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
-
-  const updates = await request.json();
-  const db = getDb();
-
-  await db.collection('signatureWall').updateOne(
-    { _id: new ObjectId(id) },
-    { $set: updates }
-  );
-
-  return NextResponse.json({ success: true });
-}
-
+// Admin-only delete by MongoDB _id
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-
-  const secretKey = request.headers.get('x-secret-key') || undefined;
-
-  try {
-    await verifySecretKey(secretKey);
-  } catch {
-    return new NextResponse('Unauthorized', { status: 401 });
+  const adminKey = request.headers.get('x-admin-key');
+  if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'Sanjay@04') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const db = getDb();
-
-  await db.collection('signatureWall').deleteOne({
-    _id: new ObjectId(id),
-  });
-
-  return NextResponse.json({ success: true });
+  try {
+    const db = await getDb();
+    await db.collection('signatureWall').deleteOne({ _id: new ObjectId(id) });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('[signatureWall DELETE id]', err);
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+  }
 }

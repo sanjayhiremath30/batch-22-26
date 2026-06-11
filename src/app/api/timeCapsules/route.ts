@@ -1,39 +1,32 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 
-// GET – return farewell messages with optional pagination
-export async function GET(request: Request) {
+// GET – return all time capsules (newest first)
+export async function GET() {
   try {
-    const url = new URL(request.url);
-    const skip = Number(url.searchParams.get('skip') ?? '0');
-    const limit = Number(url.searchParams.get('limit') ?? '100');
-
     const db = await getDb();
-    const msgs = await db
-      .collection('farewellMessages')
+    const items = await db
+      .collection('timeCapsules')
       .find({})
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .toArray();
-
-    return NextResponse.json(msgs);
+    return NextResponse.json(items);
   } catch (err) {
-    console.error('[farewellMessages GET]', err);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    console.error('[timeCapsules GET]', err);
+    return NextResponse.json({ error: 'Failed to fetch capsules' }, { status: 500 });
   }
 }
 
-// POST – verify submissionKey against students, then save farewell message
-// Body: { submissionKey, message }
+// POST – verify submissionKey, then save capsule
+// Body: { submissionKey, message, revealDate }
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { submissionKey, message } = body;
+    const { submissionKey, message, revealDate } = body;
 
-    if (!submissionKey || !message) {
+    if (!submissionKey || !message || !revealDate) {
       return NextResponse.json(
-        { error: 'submissionKey and message are required' },
+        { error: 'submissionKey, message, and revealDate are required' },
         { status: 400 }
       );
     }
@@ -47,21 +40,22 @@ export async function POST(request: Request) {
 
     if (!student) {
       return NextResponse.json(
-        { error: 'Invalid secret key. Only registered students can post.' },
+        { error: 'Invalid secret key. Only registered students can post capsules.' },
         { status: 403 }
       );
     }
 
     const now = new Date();
 
-    // Upsert: one farewell message per student
-    await db.collection('farewellMessages').updateOne(
+    // Upsert: one capsule per student
+    await db.collection('timeCapsules').updateOne(
       { studentId: student._id.toString() },
       {
         $set: {
           studentId: student._id.toString(),
-          name: student.name,
+          author: student.name,
           message,
+          revealDate,
           updatedAt: now,
         },
         $setOnInsert: {
@@ -72,13 +66,13 @@ export async function POST(request: Request) {
     );
 
     const saved = await db
-      .collection('farewellMessages')
+      .collection('timeCapsules')
       .findOne({ studentId: student._id.toString() });
 
     return NextResponse.json(saved, { status: 201 });
   } catch (err) {
-    console.error('[farewellMessages POST]', err);
-    return NextResponse.json({ error: 'Failed to save message' }, { status: 500 });
+    console.error('[timeCapsules POST]', err);
+    return NextResponse.json({ error: 'Failed to save capsule' }, { status: 500 });
   }
 }
 
@@ -93,10 +87,10 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
     const db = await getDb();
     const { ObjectId } = await import('mongodb');
-    await db.collection('farewellMessages').deleteOne({ _id: new ObjectId(id) });
+    await db.collection('timeCapsules').deleteOne({ _id: new ObjectId(id) });
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[farewellMessages DELETE]', err);
+    console.error('[timeCapsules DELETE]', err);
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
 }
