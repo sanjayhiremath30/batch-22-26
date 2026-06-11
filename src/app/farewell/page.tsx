@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Send, X, ShieldAlert, Lock, Trash2 } from "lucide-react";
-import { useStudentStore } from "@/store/useStudentStore";
+import { MessageSquare, Send, X, ShieldAlert, Lock, Trash2, Loader2 } from "lucide-react";
 
 interface FarewellMessage {
   id: string;
@@ -12,6 +11,7 @@ interface FarewellMessage {
   message: string;
   color: string;
   timestamp: string;
+  createdAt: string;
 }
 
 const COLORS = [
@@ -24,63 +24,74 @@ const COLORS = [
 ];
 
 export default function FarewellBoardPage() {
-  const { students, init } = useStudentStore();
   const [messages, setMessages] = useState<FarewellMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
-  const [secretKey, setSecretKey] = useState("");
+  const [submissionKey, setSubmissionKey] = useState("");
   const [message, setMessage] = useState("");
   const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
 
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAdminPrompt, setShowAdminPrompt] = useState(false);
   const [adminKey, setAdminKey] = useState("");
   const [adminError, setAdminError] = useState("");
 
-  useEffect(() => {
-    init();
-    const local = localStorage.getItem("farewell_messages_v2");
-    if (local) {
-      setMessages(JSON.parse(local));
-    } else {
-      setMessages([]);
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/farewellMessages");
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch farewell messages:", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    if (!secretKey.trim() || !message.trim()) return;
+    setFormSuccess("");
+    if (!submissionKey.trim() || !message.trim()) return;
 
-    const student = students.find(s => s.editPassword && s.editPassword === secretKey);
-    if (!student) {
-      setFormError("Invalid secret key. Use the password your admin created for you.");
-      return;
+    setSubmitting(true);
+    try {
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const res = await fetch("/api/farewellMessages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionKey, message: message.trim(), color }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFormError(data.error || "Something went wrong.");
+        return;
+      }
+
+      await fetchMessages();
+      setFormSuccess("Farewell posted successfully! 💜");
+      setTimeout(() => {
+        setShowForm(false);
+        setFormSuccess("");
+        setSubmissionKey("");
+        setMessage("");
+      }, 1500);
+    } catch (err) {
+      setFormError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    const newMsg: FarewellMessage = {
-      id: Date.now().toString(),
-      studentId: student.id,
-      name: student.name,
-      message: message.trim(),
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      timestamp: new Date().toLocaleDateString("en-IN"),
-    };
-
-    // Check if user already posted, if so overwrite
-    const existingIndex = messages.findIndex(m => m.studentId === student.id);
-    let updated;
-    if (existingIndex >= 0) {
-      updated = [...messages];
-      updated[existingIndex] = newMsg;
-    } else {
-      updated = [newMsg, ...messages];
-    }
-
-    setMessages(updated);
-    localStorage.setItem("farewell_messages_v2", JSON.stringify(updated));
-    setSecretKey("");
-    setMessage("");
-    setShowForm(false);
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -95,11 +106,21 @@ export default function FarewellBoardPage() {
     }
   };
 
-  const deleteMessage = (id: string) => {
+  const deleteMessage = async (id: string) => {
     if (!window.confirm("Delete this farewell message?")) return;
-    const updated = messages.filter(m => m.id !== id);
-    setMessages(updated);
-    localStorage.setItem("farewell_messages_v2", JSON.stringify(updated));
+    try {
+      await fetch("/api/farewellMessages", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": "Sanjay@04",
+        },
+        body: JSON.stringify({ id }),
+      });
+      await fetchMessages();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   return (
@@ -142,8 +163,15 @@ export default function FarewellBoardPage() {
         </button>
       </div>
 
+      {loading && (
+        <div className="flex justify-center py-20 relative z-10">
+          <Loader2 className="text-purple-400 animate-spin" size={48} />
+        </div>
+      )}
+
       {/* Messages Grid */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+      {!loading && (
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
         <AnimatePresence>
           {messages.map((msg, i) => (
             <motion.div
@@ -177,7 +205,15 @@ export default function FarewellBoardPage() {
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+          {messages.length === 0 && (
+            <div className="col-span-full py-20 text-center">
+              <p className="text-zinc-500 text-lg">
+                No farewell messages yet. Be the first!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Post Farewell Modal */}
       <AnimatePresence>
@@ -205,13 +241,13 @@ export default function FarewellBoardPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-zinc-400 text-sm mb-2">Secret Key</label>
+                  <label className="block text-zinc-400 text-sm mb-2">Submission Key</label>
                   <input
                     type="password"
-                    value={secretKey}
-                    onChange={(e) => setSecretKey(e.target.value)}
+                    value={submissionKey}
+                    onChange={(e) => setSubmissionKey(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500"
-                    placeholder="Enter the password from admin"
+                    placeholder="Enter your personal key"
                     required
                   />
                 </div>
@@ -231,6 +267,9 @@ export default function FarewellBoardPage() {
                 {formError && (
                   <p className="text-red-400 text-sm text-center">{formError}</p>
                 )}
+                {formSuccess && (
+                  <p className="text-emerald-400 text-sm text-center">{formSuccess}</p>
+                )}
 
                 <div className="flex gap-4 pt-2">
                   <button
@@ -238,17 +277,20 @@ export default function FarewellBoardPage() {
                     onClick={() => {
                       setShowForm(false);
                       setFormError("");
-                      setSecretKey("");
+                      setSubmissionKey("");
                     }}
                     className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-colors"
+                    disabled={submitting}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold hover:from-purple-500 hover:to-blue-500 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                    disabled={submitting}
                   >
-                    <Send size={16} /> Post
+                    {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} 
+                    {submitting ? "Posting..." : "Post"}
                   </button>
                 </div>
               </form>

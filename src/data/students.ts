@@ -17,22 +17,6 @@ export interface Student {
 // Start with a clean slate for the real 70-75 students
 export const MOCK_STUDENTS: Student[] = [];
 
-const STORAGE_KEY = "students_v2";
-
 export const getStudents = (): Student[] => {
-  if (typeof window !== "undefined") {
-    const local = localStorage.getItem(STORAGE_KEY);
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {
-        console.error("Failed to parse students", e);
-      }
-    }
-    // Initialize LocalStorage if empty
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_STUDENTS));
-  }
   return MOCK_STUDENTS;
 };
-
-export { STORAGE_KEY };

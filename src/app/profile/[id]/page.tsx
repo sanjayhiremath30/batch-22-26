@@ -17,8 +17,9 @@ export default function ProfilePage() {
 
   // Authentication states
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [editPasswordInput, setEditPasswordInput] = useState("");
-  const [editPasswordError, setEditPasswordError] = useState("");
+  const [submissionKeyInput, setSubmissionKeyInput] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [verifiedKey, setVerifiedKey] = useState("");
 
   // Form states
   const [messageToBatch, setMessageToBatch] = useState("");
@@ -40,22 +41,37 @@ export default function ProfilePage() {
     }
   }, [students, id]);
 
-  const handleClaimSubmit = (e: React.FormEvent) => {
+  const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!student) return;
+    if (!student || !verifiedKey) return;
 
-    const updatedStudent: Student = {
-      ...student,
-      messageToBatch,
-      favouriteMemory,
-      bestFriend,
-    };
+    try {
+      const res = await fetch(`/api/students/${student.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionKey: verifiedKey,
+          messageToBatch,
+          favouriteMemory,
+          bestFriend,
+        }),
+      });
 
-    update(student.id as string, updatedStudent);
-    setStudent(updatedStudent);
-    setIsEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || "Failed to update profile");
+        return;
+      }
+
+      // Re-fetch to update local state from DB
+      await init();
+      setIsEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error("Error saving profile:", err);
+      alert("Network error. Please try again.");
+    }
   };
 
   if (!student) {
@@ -70,23 +86,20 @@ export default function ProfilePage() {
   }
 
   const handleEditClick = () => {
-    if (student.editPassword) {
-      setShowPasswordPrompt(true);
-    } else {
-      setIsEditing(true);
-    }
+    setShowPasswordPrompt(true);
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editPasswordInput === student.editPassword) {
-      setIsEditing(true);
-      setShowPasswordPrompt(false);
-      setEditPasswordError("");
-      setEditPasswordInput("");
-    } else {
-      setEditPasswordError("Incorrect password");
+    if (submissionKeyInput.trim() === "") {
+      setAuthError("Please enter your secret key");
+      return;
     }
+    setVerifiedKey(submissionKeyInput);
+    setIsEditing(true);
+    setShowPasswordPrompt(false);
+    setAuthError("");
+    setSubmissionKeyInput("");
   };
 
   const needsDetails = !student.messageToBatch && !student.favouriteMemory && !student.bestFriend;
@@ -208,21 +221,21 @@ export default function ProfilePage() {
                   <input
                     type="password"
                     required
-                    value={editPasswordInput}
-                    onChange={e => setEditPasswordInput(e.target.value)}
-                    placeholder="Enter password"
+                    value={submissionKeyInput}
+                    onChange={e => setSubmissionKeyInput(e.target.value)}
+                    placeholder="Enter your personal secret key"
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 text-center mb-3 transition-colors"
                   />
-                  {editPasswordError && (
-                    <p className="text-red-400 text-xs mb-3">{editPasswordError}</p>
+                  {authError && (
+                    <p className="text-red-400 text-xs mb-3">{authError}</p>
                   )}
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setShowPasswordPrompt(false);
-                        setEditPasswordError("");
-                        setEditPasswordInput("");
+                        setAuthError("");
+                        setSubmissionKeyInput("");
                       }}
                       className="flex-1 py-2 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-colors text-sm"
                     >

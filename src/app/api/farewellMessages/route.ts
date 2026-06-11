@@ -1,39 +1,31 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 
-// GET – return farewell messages with optional pagination
-export async function GET(request: Request) {
+// GET – return all farewell messages (newest first)
+export async function GET() {
   try {
-    const url = new URL(request.url);
-    const skip = Number(url.searchParams.get('skip') ?? '0');
-    const limit = Number(url.searchParams.get('limit') ?? '100');
-
     const db = await getDb();
-    const msgs = await db
+    const items = await db
       .collection('farewellMessages')
       .find({})
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .toArray();
-
-    return NextResponse.json(msgs);
+    return NextResponse.json(items);
   } catch (err) {
     console.error('[farewellMessages GET]', err);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch farewell messages' }, { status: 500 });
   }
 }
 
-// POST – verify submissionKey against students, then save farewell message
-// Body: { submissionKey, message }
+// POST – verify submissionKey against students collection, then save
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { submissionKey, message } = body;
+    const { submissionKey, message, color } = body;
 
-    if (!submissionKey || !message) {
+    if (!submissionKey || !message || !color) {
       return NextResponse.json(
-        { error: 'submissionKey and message are required' },
+        { error: 'submissionKey, message, and color are required' },
         { status: 400 }
       );
     }
@@ -47,14 +39,14 @@ export async function POST(request: Request) {
 
     if (!student) {
       return NextResponse.json(
-        { error: 'Invalid secret key. Only registered students can post.' },
+        { error: 'Invalid secret key. Only registered students can post a farewell.' },
         { status: 403 }
       );
     }
 
     const now = new Date();
 
-    // Upsert: one farewell message per student
+    // Upsert: one farewell message per student (overwrite if they post again)
     await db.collection('farewellMessages').updateOne(
       { studentId: student._id.toString() },
       {
@@ -62,6 +54,8 @@ export async function POST(request: Request) {
           studentId: student._id.toString(),
           name: student.name,
           message,
+          color,
+          timestamp: now.toLocaleDateString("en-IN"),
           updatedAt: now,
         },
         $setOnInsert: {
@@ -71,6 +65,7 @@ export async function POST(request: Request) {
       { upsert: true }
     );
 
+    // Return the saved entry
     const saved = await db
       .collection('farewellMessages')
       .findOne({ studentId: student._id.toString() });
@@ -78,11 +73,11 @@ export async function POST(request: Request) {
     return NextResponse.json(saved, { status: 201 });
   } catch (err) {
     console.error('[farewellMessages POST]', err);
-    return NextResponse.json({ error: 'Failed to save message' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save farewell message' }, { status: 500 });
   }
 }
 
-// DELETE – admin only
+// DELETE – admin only (uses x-admin-key header)
 export async function DELETE(request: Request) {
   const adminKey = request.headers.get('x-admin-key');
   if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'Sanjay@04') {
