@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { AWARD_CATEGORIES } from '@/types/voting';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const candidateId = params.id;
+    const { id: candidateId } = await params;
     const db = await getDb();
     
     // Fetch all votes for this candidate
