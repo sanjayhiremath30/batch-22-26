@@ -20,7 +20,7 @@ export default function GrandEndingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-black flex items-center justify-center overflow-hidden relative">
+    <div className="min-h-screen w-full bg-transparent flex items-center justify-center overflow-hidden relative">
       
       {/* Background Image with slow cinematic zoom out */}
       <motion.div

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Home, Users, Camera, Edit3, MessageSquare, BarChart, Lock, Trophy, Briefcase, Music, Music2 } from "lucide-react";
+import { Menu, X, Home, Users, Camera, Edit3, MessageSquare, BarChart, Lock, Trophy, Briefcase, Music, Music2, Gift, Heart } from "lucide-react";
 import { useAudioStore } from "@/store/useAudioStore";
 
 const navItems = [
@@ -14,8 +14,10 @@ const navItems = [
   { name: "Farewell Board", path: "/farewell", icon: <MessageSquare size={20} /> },
   { name: "Statistics", path: "/stats", icon: <BarChart size={20} /> },
   { name: "Capsules", path: "/capsules", icon: <Lock size={20} /> },
-  { name: "Hall of Fame", path: "/fame", icon: <Trophy size={20} /> },
+  { name: "Birthdays", path: "/birthdays", icon: <Gift size={20} /> },
+  { name: "Batch Favorite", path: "/voting", icon: <Heart size={20} /> },
   { name: "Alumni Connect", path: "/alumni", icon: <Briefcase size={20} /> },
+  { name: "Best Memories", path: "/best-memories", icon: <Camera size={20} /> },
   { name: "Admin Dashboard", path: "/admin", icon: <Lock size={20} /> },
   { name: "Signing Off 2026 🎓", path: "/ending", icon: <Camera size={20} /> },
 ];

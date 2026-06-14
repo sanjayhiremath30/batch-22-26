@@ -139,7 +139,7 @@ export default function SignatureWallPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#030303] overflow-hidden relative perspective-[1000px]">
+    <div className="min-h-screen w-full bg-transparent overflow-hidden relative perspective-[1000px]">
 
       {/* Background grid */}
       <div

@@ -9,6 +9,7 @@ export interface Student {
   favouriteMemory: string;
   bestFriend: string;
   editPassword?: string;
+  birthday?: string; // Date of birth string, e.g., "15 June" or "1999-06-15"
   /** Unique secret key assigned by admin — used to authenticate student submissions
    *  on the Signature Wall, Hall of Fame, and Time Capsules pages. */
   submissionKey?: string;

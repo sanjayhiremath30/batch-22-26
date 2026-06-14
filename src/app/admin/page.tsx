@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useStudentStore } from "@/store/useStudentStore";
 import { useMemoryTunnelStore } from "@/store/useMemoryTunnelStore";
+import { useBestMemoriesStore } from "@/store/useBestMemoriesStore";
 import { Student } from "@/data/students";
 import { Trash2, Plus, UploadCloud, CheckCircle, Lock, Unlock, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,8 +43,49 @@ const FlyingCaps = () => {
 export default function AdminPage() {
   const { students, init, add, delete: deleteStudent } = useStudentStore();
   const { memories: tunnelMemories, init: initTunnel, addMemory, deleteMemory } = useMemoryTunnelStore();
+  const { memories: bestMemories, init: initMemories, deleteMemory: deleteBestMemory } = useBestMemoriesStore();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"students" | "tunnel">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "tunnel" | "memories" | "votes">("students");
+
+  const [votesLeaderboard, setVotesLeaderboard] = useState<any[]>([]);
+
+  const fetchVotesLeaderboard = async () => {
+    try {
+      const res = await fetch(`/api/votes?awardId=batch-favorite`);
+      if (res.ok) {
+        const data = await res.json();
+        setVotesLeaderboard(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leaderboard", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "votes") {
+      fetchVotesLeaderboard();
+    }
+  }, [activeTab]);
+
+  const decrementVote = async (candidateId: string) => {
+    if (!window.confirm("Are you sure you want to remove 1 vote from this candidate?")) return;
+    try {
+      const key = process.env.NEXT_PUBLIC_SECRET_KEY || "SanjayCSE";
+      const res = await fetch(`/api/votes?candidateId=${candidateId}&awardId=batch-favorite`, {
+        method: "DELETE",
+        headers: {
+          "x-secret-key": key
+        }
+      });
+      if (res.ok) {
+        fetchVotesLeaderboard();
+      } else {
+        alert("Failed to delete vote.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Form states
   const [name, setName] = useState("");
@@ -51,6 +93,7 @@ export default function AdminPage() {
   const [instagramId, setInstagramId] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [submissionKey, setSubmissionKey] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string>("/college.jpg");
   const [successMsg, setSuccessMsg] = useState(false);
@@ -73,8 +116,9 @@ export default function AdminPage() {
   useEffect(() => {
     init();
     initTunnel();
+    initMemories();
     setMounted(true);
-  }, [init, initTunnel]);
+  }, [init, initTunnel, initMemories]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,6 +145,7 @@ export default function AdminPage() {
       photoUrl: photoDataUrl,
       editPassword: editPassword.trim(),
       submissionKey: submissionKey.trim(),
+      birthday: birthday.trim(),
     };
 
     await add(newStudent);
@@ -111,6 +156,7 @@ export default function AdminPage() {
     setInstagramId("");
     setEditPassword("");
     setSubmissionKey("");
+    setBirthday("");
     setPhotoPreview(null);
     setPhotoDataUrl("/college.jpg");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -210,7 +256,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-20 md:px-12 lg:px-24 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent text-white px-4 py-20 md:px-12 lg:px-24 relative overflow-hidden">
       <FlyingCaps />
       
       <div className="relative z-10">
@@ -240,9 +286,29 @@ export default function AdminPage() {
         >
           Memory Tunnel Timeline
         </button>
+        <button
+          onClick={() => setActiveTab("memories")}
+          className={`px-6 py-2.5 rounded-xl text-lg font-bold transition-all duration-300 ${
+            activeTab === "memories"
+              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+              : "text-zinc-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          Best Memories
+        </button>
+        <button
+          onClick={() => setActiveTab("votes")}
+          className={`px-6 py-2.5 rounded-xl text-lg font-bold transition-all duration-300 ${
+            activeTab === "votes"
+              ? "bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]"
+              : "text-zinc-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          Manage Votes
+        </button>
       </div>
 
-      {activeTab === "students" ? (
+      {activeTab === "students" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-fadeIn">
           {/* ─── Left: Add Student Form ─── */}
           <div className="glassmorphism p-8 rounded-3xl">
@@ -343,19 +409,34 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Submission Key — for Signature Wall / Hall of Fame / Time Capsules */}
-              <div>
-                <label className="block text-zinc-400 text-sm mb-1">
-                  Submission Key *
-                  <span className="ml-2 text-xs text-purple-400">(student uses this to sign wall, nominate, &amp; post capsules)</span>
-                </label>
-                <input
-                  required
-                  value={submissionKey}
-                  onChange={e => setSubmissionKey(e.target.value)}
-                  placeholder="e.g. RaviCSE2026"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Submission Key */}
+                <div>
+                  <label className="block text-zinc-400 text-sm mb-1">
+                    Submission Key *
+                    <span className="ml-2 text-xs text-purple-400">(used by student)</span>
+                  </label>
+                  <input
+                    required
+                    value={submissionKey}
+                    onChange={e => setSubmissionKey(e.target.value)}
+                    placeholder="e.g. RaviCSE2026"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono"
+                  />
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-zinc-400 text-sm mb-1">
+                    Date of Birth
+                  </label>
+                  <input
+                    value={birthday}
+                    onChange={e => setBirthday(e.target.value)}
+                    placeholder="e.g. 15 June"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
               </div>
 
               <button
@@ -464,7 +545,9 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === "tunnel" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-fadeIn">
           {/* ─── Left: Add Memory Event Form ─── */}
           <div className="glassmorphism p-8 rounded-3xl">
@@ -619,6 +702,103 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "memories" && (
+        <div className="glassmorphism p-8 rounded-3xl flex flex-col h-[650px] animate-fadeIn">
+          <h2 className="text-2xl font-bold mb-6 flex items-center justify-between">
+            <span>Manage Best Memories</span>
+            <span className="text-purple-400 text-base font-normal">({bestMemories.length} total)</span>
+          </h2>
+          <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            <AnimatePresence>
+              {bestMemories.map((mem, i) => (
+                <motion.div
+                  key={mem.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20, height: 0 }}
+                  className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-blue-500/30 transition-colors"
+                >
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 flex items-center justify-center">
+                    {mem.images && mem.images.length > 0 ? (
+                      <img src={mem.images[0]} alt={mem.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-zinc-500">No Image</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-lg truncate">{mem.title}</h3>
+                    <p className="text-sm text-zinc-400 truncate">Uploaded by ID: {mem.studentId.substring(0, 8)}...</p>
+                    <p className="text-xs text-zinc-500">{mem.images?.length || 0} Images</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete "${mem.title}" memory gallery?`)) {
+                        deleteBestMemory(mem.id);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all font-medium border border-red-500/30 hover:border-red-500 shrink-0"
+                  >
+                    <Trash2 size={15} /> Delete
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {bestMemories.length === 0 && (
+              <div className="text-center text-zinc-500 py-16">
+                <p>No Best Memories uploaded yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "votes" && (
+        <div className="glassmorphism p-8 rounded-3xl flex flex-col h-[650px] animate-fadeIn">
+          <h2 className="text-2xl font-bold mb-6 flex items-center justify-between">
+            <span>Manage Batch Favorite Votes</span>
+          </h2>
+          <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            <AnimatePresence>
+              {votesLeaderboard.map((item, i) => {
+                const s = students.find(stu => stu.id === item.candidateId);
+                if (!s) return null;
+                return (
+                  <motion.div
+                    key={item.candidateId}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20, height: 0 }}
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-pink-500/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold w-6 text-zinc-400">#{i + 1}</span>
+                      <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-white/10">
+                        <img src={s.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + s.id} alt={s.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <p className="font-bold">{s.name}</p>
+                        <p className="text-sm text-pink-400 font-bold">{item.count} Votes</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => decrementVote(item.candidateId)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all font-medium border border-red-500/30 hover:border-red-500 shrink-0"
+                    >
+                      <Trash2 size={15} /> -1 Vote
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            {votesLeaderboard.length === 0 && (
+              <div className="text-center text-zinc-500 py-16">
+                <p>No votes cast yet.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

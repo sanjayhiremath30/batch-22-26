@@ -49,6 +49,7 @@ export async function PUT(
         messageToBatch: updates.messageToBatch,
         favouriteMemory: updates.favouriteMemory,
         bestFriend: updates.bestFriend,
+        birthday: updates.birthday,
         updatedAt: now
       };
 

@@ -25,6 +25,10 @@ export default function ProfilePage() {
   const [messageToBatch, setMessageToBatch] = useState("");
   const [favouriteMemory, setFavouriteMemory] = useState("");
   const [bestFriend, setBestFriend] = useState("");
+  const [birthday, setBirthday] = useState("");
+
+  // Voting Stats
+  const [voteStats, setVoteStats] = useState<any>(null);
 
   useEffect(() => {
     init();
@@ -35,9 +39,16 @@ export default function ProfilePage() {
     const found = students.find(s => s.id === id);
     if (found) {
       setStudent(found);
-      setMessageToBatch(found.messageToBatch);
-      setFavouriteMemory(found.favouriteMemory);
-      setBestFriend(found.bestFriend);
+      setMessageToBatch(found.messageToBatch || "");
+      setFavouriteMemory(found.favouriteMemory || "");
+      setBestFriend(found.bestFriend || "");
+      setBirthday(found.birthday || "");
+      
+      // Fetch vote stats
+      fetch(`/api/students/${found.id}/votes`)
+        .then(res => res.json())
+        .then(data => setVoteStats(data))
+        .catch(console.error);
     }
   }, [students, id]);
 
@@ -54,6 +65,7 @@ export default function ProfilePage() {
           messageToBatch,
           favouriteMemory,
           bestFriend,
+          birthday,
         }),
       });
 
@@ -76,7 +88,7 @@ export default function ProfilePage() {
 
   if (!student) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-zinc-400">Loading profile…</p>
@@ -105,7 +117,7 @@ export default function ProfilePage() {
   const needsDetails = !student.messageToBatch && !student.favouriteMemory && !student.bestFriend;
 
   return (
-    <div className="min-h-screen w-full bg-black text-white px-4 py-8 md:px-12 lg:px-24">
+    <div className="min-h-screen w-full bg-transparent text-white px-4 py-8 md:px-12 lg:px-24">
       {/* Back Button */}
       <motion.button
         initial={{ opacity: 0, x: -20 }}
@@ -278,6 +290,16 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
+                  <label className="block text-zinc-400 text-sm mb-1">Date of Birth</label>
+                  <input
+                    required
+                    type="date"
+                    value={birthday}
+                    onChange={e => setBirthday(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 transition-colors [&::-webkit-calendar-picker-indicator]:invert"
+                  />
+                </div>
+                <div>
                   <label className="block text-zinc-400 text-sm mb-1">Best Friend(s)</label>
                   <input
                     required
@@ -342,6 +364,40 @@ export default function ProfilePage() {
                     <p className="text-lg text-zinc-200">{student.bestFriend}</p>
                   </div>
                 </div>
+
+                {/* Voting Stats */}
+                {voteStats && (
+                  <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+                    <div className="flex items-center gap-6">
+                      <div className="flex-1 glassmorphism rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                        <Heart className="text-purple-400 mb-2" size={24} />
+                        <p className="text-zinc-400 text-xs uppercase tracking-widest font-bold">Total Votes</p>
+                        <p className="text-2xl font-black">{voteStats.totalVotes || 0}</p>
+                      </div>
+                      <div className="flex-1 glassmorphism rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                        <Star className="text-yellow-400 mb-2" size={24} />
+                        <p className="text-zinc-400 text-xs uppercase tracking-widest font-bold">Current Rank</p>
+                        <p className="text-2xl font-black">{voteStats.currentRank ? `#${voteStats.currentRank}` : "N/A"}</p>
+                      </div>
+                    </div>
+
+                    {voteStats.badges && voteStats.badges.length > 0 && (
+                      <div>
+                        <p className="text-zinc-500 text-sm uppercase tracking-wider font-bold mb-3">Award Badges Won</p>
+                        <div className="flex flex-wrap gap-3">
+                          {voteStats.badges.map((badge: any, idx: number) => (
+                            <div key={idx} className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl px-4 py-2 flex flex-col">
+                              <span className="font-bold text-sm text-white flex items-center gap-2">
+                                {badge.rank === 1 ? '🥇' : badge.rank === 2 ? '🥈' : '🥉'} {badge.awardTitle}
+                              </span>
+                              <span className="text-xs text-purple-300">Rank #{badge.rank} • {badge.votes} votes</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Edit button */}
                 <button

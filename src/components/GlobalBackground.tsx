@@ -151,17 +151,19 @@ export default function GlobalBackground() {
 
   return (
     <>
+      <div className="fixed inset-0 z-[-40] bg-[#050510]" />
       {/* Background Graduation Cap Image with gold/dark overlay for visual depth */}
       <div 
-        className="fixed inset-0 z-[-30] bg-cover bg-center bg-no-repeat transition-all duration-1000"
+        className={`fixed inset-0 z-[-30] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+          pathname === '/ending' || pathname === '/signatures' ? 'opacity-0' : 'opacity-100'
+        }`}
         style={{
           backgroundImage: "url('/herobackground.png')",
-          opacity: 0.6 // stronger opacity for clearer text visibility
         }}
       />
       {/* Gradient Dark Backdrop Overlay - adjusted so the background graphics are visible */}
-      <div className="fixed inset-0 z-[-25] bg-black/60 pointer-events-none" />
-      <div className="fixed inset-0 z-[-25] bg-gradient-to-b from-black/60 via-black/80 to-black/95 pointer-events-none" />
+      <div className="fixed inset-0 z-[-25] bg-black/20 pointer-events-none" />
+      <div className="fixed inset-0 z-[-25] bg-gradient-to-b from-transparent via-black/40 to-black/80 pointer-events-none" />
 
       {pathname !== "/" && <FloatingQuotes />}
 

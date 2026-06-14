@@ -22,7 +22,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-black flex items-center justify-center">
+    <div className="relative min-h-screen w-full overflow-hidden bg-transparent flex items-center justify-center">
 
       <AnimatePresence mode="wait">
         {step === 0 && (
@@ -45,10 +45,10 @@ export default function Home() {
                 src="/college.jpg"
                 alt="College Background"
                 fill
-                className="object-cover opacity-40"
+                className="object-cover opacity-70"
                 priority
               />
-              <div className="absolute inset-0 bg-black/60" />
+              <div className="absolute inset-0 bg-black/30" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
             </motion.div>
 
@@ -102,10 +102,10 @@ export default function Home() {
                 src="/herobackground.png"
                 alt="Hero Background"
                 fill
-                className="object-cover opacity-20"
+                className="object-cover opacity-60"
                 priority
               />
-              <div className="absolute inset-0 bg-black/70" />
+              <div className="absolute inset-0 bg-black/40" />
             </div>
 
             <FloatingQuotes />
