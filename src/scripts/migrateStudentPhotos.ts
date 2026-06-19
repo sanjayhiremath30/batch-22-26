@@ -66,29 +66,58 @@ async function migrate(): Promise<void> {
     return;
   }
 
+  // Helper to add a timeout to a promise
+  function withTimeout<T>(promise: Promise<T>, ms: number, taskName: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout after ${ms}ms in ${taskName}`)), ms)
+      ),
+    ]) as Promise<T>;
+  }
+
   // ---------------------------------------------------------------
   // 2️⃣ Process each document – we use a cursor to stream results.
   // ---------------------------------------------------------------
-  const cursor = coll.find({ photoUrl: { $regex: '^data:image' } }, { projection: { _id: 1, name: 1, photoUrl: 1 } });
+  console.log('📂 Creating cursor...');
+  const cursor = coll.find(
+    { photoUrl: { $regex: '^data:image' } },
+    { projection: { _id: 1, name: 1, photoUrl: 1 } }
+  );
+  console.log('✅ Cursor created');
 
   let processed = 0;
   let migrated = 0;
   const failedIds: any[] = [];
 
-  while (await cursor.hasNext()) {
+  while (true) {
+    console.log('➡️ Checking hasNext...');
+    const hasNext = await cursor.hasNext();
+    console.log(`✅ hasNext = ${hasNext}`);
+    if (!hasNext) break;
+
+    console.log('📄 Fetching next document...');
     const doc = await cursor.next();
     if (!doc) break;
 
     processed += 1;
     const { _id, name, photoUrl } = doc;
+    console.log(`📄 Loaded document: ${name} (id: ${_id})`);
 
     try {
-      const secureUrl = await uploadToCloudinary(photoUrl);
-      await coll.updateOne({ _id }, { $set: { photoUrl: secureUrl } });
+      console.log('☁️ Starting Cloudinary upload...');
+      const secureUrl = await withTimeout(uploadToCloudinary(photoUrl), 30000, 'Cloudinary upload');
+      console.log('✅ Cloudinary upload completed');
+
+      console.log('💾 Updating MongoDB...');
+      await withTimeout(coll.updateOne({ _id }, { $set: { photoUrl: secureUrl } }), 30000, 'MongoDB update');
+      console.log('✅ MongoDB update completed');
+
       migrated += 1;
       console.log(`[${processed}/${totalBase64}] Migrated ${name}`);
     } catch (e) {
-      console.error(`[${processed}/${totalBase64}] ❌ Failed ${name}`, e);
+      console.error(`[${processed}/${totalBase64}] ❌ Failed ${name}`);
+      console.error(e instanceof Error ? e.stack : e);
       failedIds.push(_id);
     }
   }

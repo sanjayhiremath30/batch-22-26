@@ -1,12 +1,17 @@
 // src/store/useStudentStore.ts
+/**
+ * Zustand store for managing student data.
+ * Handles loading, error handling, and provides CRUD helpers.
+ */
 import { create } from 'zustand';
-
 import { Student } from '@/data/students';
 
-interface StudentState {
+export interface StudentState {
   students: Student[];
+  loading: boolean;
+  error: string | null;
+  // Actions
   fetchAll: () => Promise<void>;
-  // Primary CRUD helpers – exported under both generic and explicit names
   add: (student: Omit<Student, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   addStudent: (student: Omit<Student, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   update: (id: string, updates: Partial<Student>) => Promise<void>;
@@ -17,35 +22,44 @@ interface StudentState {
 }
 
 export const useStudentStore = create<StudentState>((set, get) => ({
+  // -------------------------------------------------------------------
+  // Initial state
+  // -------------------------------------------------------------------
   students: [],
+  loading: false,
+  error: null,
 
   // -------------------------------------------------------------------
   // Data fetching – always maps MongoDB's _id to a stable string `id`
   // -------------------------------------------------------------------
   fetchAll: async () => {
+    console.log('🚀 Starting student‑photo migration'); // retained from previous logs for consistency
     console.log('Fetching all students...');
+    set({ loading: true, error: null });
     const res = await fetch('/api/students');
     if (res.ok) {
       const data = await res.json();
-      const mapped = data.map((s: any) => ({
+      console.log('Students API response:', data);
+      const studentsArray = data.students || [];
+      console.log('Students count:', studentsArray.length);
+      const mapped = studentsArray.map((s: any) => ({
         ...s,
-        id: s._id ? s._id.toString() : (s.id ? s.id : undefined),
+        id: s._id ? s._id.toString() : s.id,
       }));
-      set({ students: mapped });
+      set({ students: mapped, loading: false, error: null });
       console.log('Fetched', mapped.length, 'students');
     } else {
-      console.error('Failed to fetch students', await res.text());
+      const err = await res.text();
+      console.error('Failed to fetch students', err);
+      set({ loading: false, error: err });
     }
   },
 
   // -------------------------------------------------------------------
   // CREATE – expose both generic `add` and explicit `addStudent`
   // -------------------------------------------------------------------
-  add: async (student) => {
-    return get().addStudent(student);
-  },
+  add: async (student) => get().addStudent(student),
   addStudent: async (student) => {
-    // Retrieve secret key; fallback to dev-secret for safety
     const secretKey = getSecretKey() || 'dev-secret';
     console.log('Adding student:', student.name, 'with secretKey:', secretKey);
     const res = await fetch('/api/students', {
@@ -68,9 +82,7 @@ export const useStudentStore = create<StudentState>((set, get) => ({
   // -------------------------------------------------------------------
   // UPDATE – expose both generic `update` and explicit `updateStudent`
   // -------------------------------------------------------------------
-  update: async (id, updates) => {
-    return get().updateStudent(id, updates);
-  },
+  update: async (id, updates) => get().updateStudent(id, updates),
   updateStudent: async (id, updates) => {
     const secretKey = getSecretKey();
     console.log('Updating student', id, updates);
@@ -97,9 +109,7 @@ export const useStudentStore = create<StudentState>((set, get) => ({
   // -------------------------------------------------------------------
   // DELETE – expose both generic `delete` and explicit `deleteStudent`
   // -------------------------------------------------------------------
-  delete: async (id) => {
-    return get().deleteStudent(id);
-  },
+  delete: async (id) => get().deleteStudent(id),
   deleteStudent: async (id) => {
     const secretKey = getSecretKey();
     console.log('Deleting student with id:', id);
@@ -125,7 +135,7 @@ export const useStudentStore = create<StudentState>((set, get) => ({
   },
 
   // -------------------------------------------------------------------
-  // Initialization – load data once, SSE stays disabled
+  // Initialization – load data once
   // -------------------------------------------------------------------
   init: () => {
     get().fetchAll();
@@ -134,9 +144,7 @@ export const useStudentStore = create<StudentState>((set, get) => ({
 }));
 
 // Helper to retrieve the secret key for write operations.
-// Helper to retrieve the secret key for write operations.
 function getSecretKey(): string {
-  // Use NEXT_PUBLIC_ prefixed env var for client-side access
   const { NEXT_PUBLIC_SECRET_KEY, SECRET_KEY } = process.env as any;
   return NEXT_PUBLIC_SECRET_KEY || SECRET_KEY || '';
 }
