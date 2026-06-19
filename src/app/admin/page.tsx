@@ -186,8 +186,7 @@ export default function AdminPage() {
       text: tunnelText.trim(),
       url: tunnelDataUrl,
     };
-
-    addMemory(newMemory);
+    addMemory(newMemory, adminPassInput);
 
     // Reset form
     setTunnelYear("");
@@ -684,7 +683,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => {
                         if (window.confirm(`Delete "${mem.year} - ${mem.text}" from the timeline?`)) {
-                          deleteMemory(mem.id);
+                          deleteMemory(mem.id, adminPassInput);
                         }
                       }}
                       className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all font-medium border border-red-500/30 hover:border-red-500 shrink-0"

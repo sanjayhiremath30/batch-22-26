@@ -29,6 +29,7 @@ export const useSignatureWallStore = create<SignatureWallState>((set, get) => ({
       headers: { 'Content-Type': 'application/json', 'x-secret-key': secretKey },
       body: JSON.stringify(entry),
     });
+    await get().fetchAll();
   },
 
   update: async (id, updates) => {
@@ -38,6 +39,7 @@ export const useSignatureWallStore = create<SignatureWallState>((set, get) => ({
       headers: { 'Content-Type': 'application/json', 'x-secret-key': secretKey },
       body: JSON.stringify(updates),
     });
+    await get().fetchAll();
   },
 
   delete: async (id) => {
@@ -46,6 +48,7 @@ export const useSignatureWallStore = create<SignatureWallState>((set, get) => ({
       method: 'DELETE',
       headers: { 'x-secret-key': secretKey },
     });
+    await get().fetchAll();
   },
 
   init: () => {

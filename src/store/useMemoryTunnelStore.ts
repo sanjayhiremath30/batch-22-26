@@ -1,54 +1,94 @@
 import { create } from 'zustand';
 
 export interface MemoryEvent {
-  id: string;
+  id: string; // mapped from _id
   url: string;
   year: string;
   text: string;
 }
 
-const STORAGE_KEY = 'memory_tunnel_events_v1';
-
-const DEFAULT_MEMORIES: MemoryEvent[] = [
-  { id: "1", url: "/college.jpg", year: "2022", text: "First Day" },
-  { id: "2", url: "/college.jpg", year: "2023", text: "Fest 23" },
-  { id: "3", url: "/college.jpg", year: "2024", text: "Industrial Visit" },
-  { id: "4", url: "/college.jpg", year: "2025", text: "Hackathon Winners" },
-  { id: "5", url: "/college.jpg", year: "2026", text: "Graduation Day" },
-];
-
 interface MemoryTunnelState {
   memories: MemoryEvent[];
+  loading: boolean;
+  error: string | null;
   initialized: boolean;
   init: () => void;
-  addMemory: (memory: MemoryEvent) => void;
-  deleteMemory: (id: string) => void;
+  fetchAll: () => Promise<void>;
+  addMemory: (memory: Omit<MemoryEvent, 'id'>, secretKey: string) => Promise<void>;
+  deleteMemory: (id: string, secretKey: string) => Promise<void>;
 }
 
 export const useMemoryTunnelStore = create<MemoryTunnelState>((set, get) => ({
   memories: [],
+  loading: false,
+  error: null,
   initialized: false,
+
+  fetchAll: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch('/api/memoryTunnel');
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.map((m: any) => ({
+          ...m,
+          id: m._id ? m._id.toString() : m.id,
+        }));
+        set({ memories: mapped, loading: false });
+      } else {
+        set({ loading: false, error: 'Failed to fetch memory tunnel events' });
+      }
+    } catch (err) {
+      set({ loading: false, error: 'Network error fetching memory tunnel events' });
+    }
+  },
 
   init: () => {
     if (get().initialized) return;
-    if (typeof window === 'undefined') return;
-    const raw = localStorage.getItem(STORAGE_KEY);
-    let loaded: MemoryEvent[] = DEFAULT_MEMORIES;
-    if (raw) {
-      try { loaded = JSON.parse(raw); } catch { /* ignore */ }
+    get().fetchAll();
+    set({ initialized: true });
+  },
+
+  addMemory: async (memory, secretKey) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch('/api/memoryTunnel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-secret-key': secretKey,
+        },
+        body: JSON.stringify(memory),
+      });
+      if (res.ok) {
+        await get().fetchAll();
+      } else {
+        const errData = await res.text();
+        set({ loading: false, error: errData || 'Failed to add memory' });
+      }
+    } catch (err) {
+      set({ loading: false, error: 'Network error adding memory' });
     }
-    set({ memories: loaded, initialized: true });
   },
 
-  addMemory: (memory: MemoryEvent) => {
-    const updated = [...get().memories, memory];
-    set({ memories: updated });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  },
-
-  deleteMemory: (id: string) => {
-    const updated = get().memories.filter(m => m.id !== id);
-    set({ memories: updated });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  deleteMemory: async (id, secretKey) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch(`/api/memoryTunnel/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': secretKey,
+        },
+      });
+      if (res.ok) {
+        await get().fetchAll();
+      } else {
+        const errData = await res.text();
+        set({ loading: false, error: errData || 'Failed to delete memory' });
+      }
+    } catch (err) {
+      set({ loading: false, error: 'Network error deleting memory' });
+    }
   },
 }));
