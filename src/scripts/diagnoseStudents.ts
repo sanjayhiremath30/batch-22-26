@@ -1,5 +1,5 @@
 // src/scripts/diagnoseStudents.ts
-import { getDb } from '../lib/mongodb.ts';
+import { getDb } from '../lib/mongodb';
 import type { Document } from 'mongodb';
 
 /**
@@ -41,7 +41,7 @@ async function main() {
   // 4️⃣ Names with Base64 images
   if (base64Count > 0) {
     const cursor = collection.find({ photoUrl: { $regex: '^data:image' } }, { projection: { name: 1, _id: 0 } });
-const names = await withTimeout(cursor.toArray(), 5000, 'Fetching Base64 names timed out');
+    const names = await withTimeout(cursor.toArray(), 5000, 'Fetching Base64 names timed out');
     const base64Names = names.map((doc: any) => doc.name ?? '(no name)');
     console.log('Names with Base64 images:');
     base64Names.forEach((n) => console.log('- ', n));

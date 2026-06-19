@@ -8,4 +8,4 @@ require('ts-node').register({
 });
 
 // Import and execute the TS script.
-require('./diagnoseStudents.ts');
+require('./diagnoseStudents');
