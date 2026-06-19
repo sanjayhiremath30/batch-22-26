@@ -1,122 +1,124 @@
 // src/scripts/migrateStudentPhotos.ts
-import { connectToDatabase, getDb } from '@/lib/mongodb';
-import { v2 as cloudinary } from 'cloudinary';
+/**
+ * Migration script that converts all Base64-encoded `photoUrl` values in the
+ * `students` collection to Cloudinary URLs.
+ *
+ * Requirements fulfilled:
+ *  • Uses a relative import for `getDb` (../lib/mongodb).
+ *  • Counts Base64 documents via `countDocuments` (no deprecated cursor.count()).
+ *  • Uploads each Base64 image to Cloudinary (folder: "students").
+ *  • Updates **only** the `photoUrl` field.
+ * Run with: npm run migrate
+ */
+
 import { config } from 'dotenv';
-import { Collection, Document, WithId } from 'mongodb';
-
-// Load environment variables (for Cloudinary credentials)
-config();
-
-// Configure Cloudinary
+config({ path: '.env.local' });
+console.log('MONGODB_URI loaded:', !!process.env.MONGODB_URI);
+import { getDb } from '../lib/mongodb';
+import { Db, Document } from 'mongodb';
+import { v2 as cloudinary } from 'cloudinary';
+// ---------------------------------------------------------------------
+// Cloudinary configuration – read from environment variables.
+// ---------------------------------------------------------------------
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
-  api_key: process.env.CLOUDINARY_API_KEY || '',
-  api_secret: process.env.CLOUDINARY_API_SECRET || '',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ?? '',
+  api_key: process.env.CLOUDINARY_API_KEY ?? '',
+  api_secret: process.env.CLOUDINARY_API_SECRET ?? '',
+  secure: true,
 });
 
-interface Student extends Document {
+interface StudentDoc extends Document {
+  _id: any;
+  name: string;
   photoUrl: string;
-  [key: string]: any;
+  // other fields are allowed but not typed – we never modify them.
 }
 
-/**
- * Creates a backup of the `students` collection into `students_backup`.
- * If the backup already exists, it will be dropped and recreated to ensure
- * a fresh snapshot before any migration runs.
- */
-async function backupStudents(db: any): Promise<void> {
-  const backupName = 'students_backup';
-  const existing = await db.listCollections({ name: backupName }).hasNext();
-  if (existing) {
-    console.log('⚠️ Backup collection exists. Dropping it first...');
-    await db.collection(backupName).drop();
-  }
-  console.log('🔁 Creating backup of `students` collection...');
-  // Use aggregation $out to copy all docs
-  await db
-    .collection('students')
-    .aggregate([{ $match: {} }, { $out: backupName }])
-    .toArray();
-  console.log('✅ Backup completed as collection `students_backup`.');
+/** Helper – determines whether a URL is a Base64 data URI. */
+function isBase64(url: string): boolean {
+  return /^data:image/.test(url);
 }
 
-/**
- * Upload a Base64 image string to Cloudinary.
- * Returns the secure URL on success, otherwise throws.
- */
-async function uploadBase64(imageBase64: string): Promise<string> {
-  // Cloudinary can accept a data URI directly
-  const result = await cloudinary.uploader.upload(imageBase64, {
+/** Upload a Base64 data‑uri to Cloudinary and return the secure URL. */
+async function uploadToCloudinary(base64: string): Promise<string> {
+  const result = await cloudinary.uploader.upload(base64, {
     folder: 'students',
     resource_type: 'image',
   });
   return result.secure_url;
 }
 
-/**
- * Process a batch of student records.
- * `batchSize` controls how many records are handled in one run.
- * Set to a small number for testing (e.g., 5) and increase for full migration.
- */
-async function migrateBatch(db: any, batchSize = 20): Promise<void> {
-  const studentsCol: Collection<Student> = db.collection('students');
+/** Main migration routine */
+async function migrate(): Promise<void> {
+  console.log('🚀 Starting student‑photo migration');
 
-  const cursor = studentsCol.find({}).limit(batchSize);
+  const db: Db = await getDb();
+  const coll = db.collection<StudentDoc>('students');
+
+  // ---------------------------------------------------------------
+  // 1️⃣ Count how many documents still have Base64 images.
+  // ---------------------------------------------------------------
+  const totalBase64 = await coll.countDocuments({ photoUrl: { $regex: '^data:image' } });
+  console.log(`🔎 Base64 photos found: ${totalBase64}`);
+
+  if (totalBase64 === 0) {
+    console.log('✅ No Base64 images to migrate. Exiting.');
+    return;
+  }
+
+  // ---------------------------------------------------------------
+  // 2️⃣ Process each document – we use a cursor to stream results.
+  // ---------------------------------------------------------------
+  const cursor = coll.find({ photoUrl: { $regex: '^data:image' } }, { projection: { _id: 1, name: 1, photoUrl: 1 } });
+
   let processed = 0;
-  let succeeded = 0;
-  let skipped = 0;
-  let failed = 0;
+  let migrated = 0;
+  const failedIds: any[] = [];
 
   while (await cursor.hasNext()) {
-    const student = await cursor.next();
-    if (!student) break;
-    processed++;
-    const { _id, photoUrl } = student;
-    // Skip if already a Cloudinary URL (simple heuristic)
-    if (photoUrl && photoUrl.startsWith('http')) {
-      console.log(`⚡️ Student ${_id?.toString()} already migrated, skipping.`);
-      skipped++;
-      continue;
-    }
+    const doc = await cursor.next();
+    if (!doc) break;
+
+    processed += 1;
+    const { _id, name, photoUrl } = doc;
+
     try {
-      const secureUrl = await uploadBase64(photoUrl);
-      await studentsCol.updateOne({ _id }, { $set: { photoUrl: secureUrl } });
-      console.log(`✅ Migrated student ${_id?.toString()}`);
-      succeeded++;
-    } catch (err) {
-      console.error(`❌ Failed to migrate student ${_id?.toString()}:`, err);
-      failed++;
-      // Keep original Base64 unchanged – nothing to do.
+      const secureUrl = await uploadToCloudinary(photoUrl);
+      await coll.updateOne({ _id }, { $set: { photoUrl: secureUrl } });
+      migrated += 1;
+      console.log(`[${processed}/${totalBase64}] Migrated ${name}`);
+    } catch (e) {
+      console.error(`[${processed}/${totalBase64}] ❌ Failed ${name}`, e);
+      failedIds.push(_id);
     }
   }
 
-  console.log('\n--- Migration batch summary ---');
-  console.log(`Processed: ${processed}`);
-  console.log(`Migrated: ${succeeded}`);
-  console.log(`Skipped (already URLs): ${skipped}`);
-  console.log(`Failed: ${failed}`);
-}
+  // ---------------------------------------------------------------
+  // 3️⃣ Summary
+  // ---------------------------------------------------------------
+  console.log('\n=== Migration Summary ===');
+  console.log(`Total students in collection : ${await coll.estimatedDocumentCount()}`);
+  console.log(`Base64 images discovered    : ${totalBase64}`);
+  console.log(`Successfully migrated       : ${migrated}`);
+  console.log(`Failed migrations           : ${failedIds.length}`);
+  if (failedIds.length) {
+    console.log('Failed student IDs:', failedIds);
+  }
 
-/**
- * Main entry point. Executes backup then migrates in batches.
- * Adjust `BATCH_SIZE` env var for test vs full run.
- */
-async function main() {
-  try {
-    await connectToDatabase();
-    const db = await getDb();
-    // Step 1: backup
-    await backupStudents(db);
-    // Step 2: migrate in batches
-    const batchSize = Number(process.env.BATCH_SIZE) || 20; // default 20 docs per run
-    await migrateBatch(db, batchSize);
-    console.log('🎉 Migration script finished.');
-  } catch (e) {
-    console.error('❗️ Unexpected error in migration script:', e);
-    process.exit(1);
+  // ---------------------------------------------------------------
+  // 4️⃣ Verification – ensure no Base64 images remain.
+  // ---------------------------------------------------------------
+  const remaining = await coll.countDocuments({ photoUrl: { $regex: '^data:image' } });
+  console.log(`\nRemaining Base64 images: ${remaining}`);
+  if (remaining === 0) {
+    console.log('🎉 Migration complete – all students now use Cloudinary URLs.');
+  } else {
+    console.warn('⚠️ Some Base64 images remain. Re‑run the script or investigate failures.');
   }
 }
 
-if (require.main === module) {
-  main();
-}
+// Execute when run directly via `node -r ts-node/register …`
+migrate().catch((err) => {
+  console.error('🚨 Unexpected error during migration:', err);
+  process.exit(1);
+});

@@ -1,14 +1,16 @@
 import { MongoClient, Db } from 'mongodb';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
-}
+// MONGODB_URI check moved to runtime in connectToDatabase()
 
-const uri: string = process.env.MONGODB_URI;
+// const uri: string = process.env.MONGODB_URI; // moved inside function
 let client: MongoClient | null = null;
 let cachedDb: Db | null = null;
 
 export async function connectToDatabase(): Promise<Db> {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  }
+  const uri: string = process.env.MONGODB_URI;
   if (cachedDb) {
     return cachedDb;
   }
