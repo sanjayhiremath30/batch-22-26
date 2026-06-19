@@ -134,6 +134,33 @@ export default function AdminPage() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let finalPhotoUrl = photoDataUrl;
+    
+    // Upload image if a new file is selected
+    const file = fileInputRef.current?.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'image');
+      
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const data = await res.json();
+        finalPhotoUrl = data.url;
+      } catch (err) {
+        console.error("Photo upload failed:", err);
+        alert("Photo upload failed. Please try again.");
+        return;
+      }
+    }
+
     const newStudent: Student = {
       id: Date.now().toString(),
       name: name.trim(),
@@ -142,7 +169,7 @@ export default function AdminPage() {
       messageToBatch: "",
       favouriteMemory: "",
       bestFriend: "",
-      photoUrl: photoDataUrl,
+      photoUrl: finalPhotoUrl,
       editPassword: editPassword.trim(),
       submissionKey: submissionKey.trim(),
       birthday: birthday.trim(),
