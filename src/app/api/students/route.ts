@@ -15,6 +15,7 @@ export async function GET(req: Request) {
     branch: 1,
     instagramId: 1,
     photoUrl: 1,
+    birthday: 1,
     favouriteMemory: 1,
     bestFriend: 1,
     _id: 1,

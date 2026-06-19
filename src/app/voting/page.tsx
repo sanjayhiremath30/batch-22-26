@@ -30,6 +30,16 @@ export default function BatchFavoriteVotingPage() {
     return () => clearInterval(interval);
   }, [fetchAll]);
 
+  useEffect(() => {
+    if (students.length > 0) {
+      console.log("Student API response:", { count: students.length, students });
+      if (students[0]) {
+        console.log("Photo URL:", students[0].photoUrl);
+        console.log("Birthday:", students[0].birthday);
+      }
+    }
+  }, [students]);
+
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch(`/api/votes?awardId=${CATEGORY_ID}`);
@@ -128,11 +138,13 @@ export default function BatchFavoriteVotingPage() {
         <div className="relative mb-4 flex flex-col items-center">
           {rank === 1 ? <Trophy className={`w-8 h-8 md:w-10 md:h-10 mb-2 ${crownColor}`} /> : <Medal className={`w-6 h-6 md:w-8 md:h-8 mb-2 ${crownColor}`} />}
           <div className={`relative ${rank === 1 ? 'w-24 h-24 md:w-32 md:h-32 border-yellow-400' : 'w-20 h-20 md:w-24 md:h-24 border-white/20'} rounded-full overflow-hidden border-4 shadow-xl`}>
-            <Image
+            <img
               src={student.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + student.id}
               alt={student.name}
-              fill
-              className="object-cover"
+              className="object-cover w-full h-full"
+              onError={(e) => {
+                e.currentTarget.src = "/default-avatar.png";
+              }}
             />
           </div>
           <div className="mt-4 text-center glassmorphism px-4 py-2 rounded-xl">
@@ -202,7 +214,7 @@ export default function BatchFavoriteVotingPage() {
                           #{index + 1}
                         </span>
                         <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
-                          <Image src={s.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + s.id} alt={s.name} fill className="object-cover" />
+                          <img src={s.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + s.id} alt={s.name} className="object-cover w-full h-full" onError={(e) => { e.currentTarget.src = "/default-avatar.png"; }} />
                         </div>
                         <span className="font-medium text-sm md:text-base truncate max-w-[100px] md:max-w-[140px]">{s.name}</span>
                       </div>
@@ -243,11 +255,13 @@ export default function BatchFavoriteVotingPage() {
               {filteredStudents.map((student) => (
                 <div key={student.id} className="flex flex-col p-4 rounded-3xl bg-white/5 border border-white/5 hover:border-pink-500/50 hover:bg-white/10 transition-all group">
                   <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-4 border border-white/10 group-hover:border-pink-500/30 transition-colors shadow-lg">
-                    <Image 
+                    <img
                       src={student.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + student.id} 
                       alt={student.name} 
-                      fill 
-                      className="object-cover group-hover:scale-110 transition-transform duration-500" 
+                      className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" 
+                      onError={(e) => {
+                        e.currentTarget.src = "/default-avatar.png";
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
@@ -296,11 +310,13 @@ export default function BatchFavoriteVotingPage() {
                 
                 <div className="flex flex-col items-center gap-3">
                   <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-pink-500/50 shadow-[0_0_30px_rgba(236,72,153,0.3)]">
-                    <Image 
+                    <img
                       src={selectedCandidate.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + selectedCandidate.id} 
                       alt={selectedCandidate.name} 
-                      fill 
-                      className="object-cover" 
+                      className="object-cover w-full h-full" 
+                      onError={(e) => {
+                        e.currentTarget.src = "/default-avatar.png";
+                      }}
                     />
                   </div>
                   <p className="text-2xl font-bold mt-2">{selectedCandidate.name}</p>

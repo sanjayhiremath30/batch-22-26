@@ -50,6 +50,8 @@ export default function BirthdaysPage() {
         .sort((a: any, b: any) => a.diffDays - b.diffDays);
 
       setUpcomingBirthdays(parsedBirthdays);
+      console.log("Students loaded:", students.length);
+      console.log("Birthday records:", parsedBirthdays.length);
     }
   }, [students]);
 
@@ -94,11 +96,13 @@ export default function BirthdaysPage() {
                 className="glassmorphism rounded-2xl p-6 flex items-center gap-6 border border-white/10 hover:border-pink-500/50 hover:bg-white/5 transition-all hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)]"
               >
                 <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-pink-500/50 shadow-lg shadow-pink-500/20">
-                  <Image
+                  <img
                     src={b.student.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + b.student.id}
                     alt={b.student.name}
-                    fill
-                    className="object-cover"
+                    className="object-cover w-full h-full"
+                    onError={(e) => {
+                      e.currentTarget.src = "/default-avatar.png";
+                    }}
                   />
                 </div>
                 <div>

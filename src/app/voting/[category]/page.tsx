@@ -121,11 +121,11 @@ export default function VotingCategoryPage() {
             {filteredStudents.map((student) => (
               <div key={student.id} className="flex flex-col p-4 rounded-3xl bg-white/5 border border-white/5 hover:border-blue-500/50 hover:bg-white/10 transition-all group">
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-4 border-2 border-white/10 group-hover:border-blue-500/30 transition-colors shadow-lg">
-                  <Image 
+                  <img 
                     src={student.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + student.id} 
                     alt={student.name} 
-                    fill 
-                    className="object-cover group-hover:scale-110 transition-transform duration-500" 
+                    className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" 
+                    onError={(e) => { e.currentTarget.src = "/default-avatar.png"; }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -173,11 +173,11 @@ export default function VotingCategoryPage() {
                 
                 <div className="flex flex-col items-center gap-3">
                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                    <Image 
+                    <img 
                       src={selectedCandidate.photoUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + selectedCandidate.id} 
                       alt={selectedCandidate.name} 
-                      fill 
-                      className="object-cover" 
+                      className="object-cover w-full h-full" 
+                      onError={(e) => { e.currentTarget.src = "/default-avatar.png"; }}
                     />
                   </div>
                   <p className="text-xl font-medium">{selectedCandidate.name}</p>
